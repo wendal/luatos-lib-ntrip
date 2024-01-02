@@ -101,7 +101,10 @@ function ntrip.task()
                     log.info("ntrip", "接收", succ, data_len)
                     if ntrip.cb then
                         ntrip.cb(rxbuff)
-                        
+                    end
+                    if #rxbuff > 1024 then
+                        rxbuff:del()
+                        rxbuff:resize(1024)
                     end
                 else
                     break

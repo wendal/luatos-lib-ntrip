@@ -17,7 +17,8 @@ sys.taskInit(function()
         port = 8002,
         user = "zhd556308",
         password = "OZ469006",
-        mount = "/RTCM33_GRC",
+        -- mount = "/RTCM33_GRC",
+        mount = "/RTCM33_GRCE_411",
         cb = gnss_write
     })
     ntrip.start()
