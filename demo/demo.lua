@@ -5,7 +5,7 @@ ntrip = require("ntrip")
 local gnss_uart_id = 1
 
 local function gnss_write(data)
-    log.info("ntrip", "write")
+    -- log.info("ntrip", "write")
     uart.tx(gnss_uart_id, data)
 end
 
@@ -34,9 +34,9 @@ sys.taskInit(function()
                 local gga = s:find("$GNGGA,")
                 if gga and s:find("\r\n", gga) then
                     log.info("uart", s:sub(gga, s:find("\r\n", gga) - 1))
-                    ntrip.gga(s:sub(gga, s:find("\r\n", gga) + 1))
-                    -- ntrip.gga(s)
+                    -- ntrip.gga(s:sub(gga, s:find("\r\n", gga) + 1))
                 end
+                ntrip.gga(s)
             end
             if #s == len then
                 break

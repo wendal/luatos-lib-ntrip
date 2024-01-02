@@ -2,7 +2,7 @@
 --[[
 @module ntrip
 @summary RTK客户端
-@version 1.0.1
+@version 1.0.2
 @date    2024.01.02
 @author  wendal
 @tag LUAT_USE_TAG
@@ -20,25 +20,30 @@ local ntrip = {}
 @return boolean 配置成功返回true, 否则返回nil
 @usage
 -- 实例配置, 但如下账户信息肯定是过期的, 无法连接
+    gnss_uart_id = 1 -- 按实际连接的uart端口号
     function gnss_write(buff)
         uart.write(gnss_uart_id, buff)
     end
     ntrip.setup({
-        host = "106.55.71.75",
-        port = 8002,
-        user = "zhd556308",
-        password = "OZ469006",
-        mount = "/RTCM33_GRC",
-        https = false,
-        cb = gnss_write
+        host = "106.55.71.75", -- 服务器域名或者ip
+        port = 8002,           -- 端口
+        user = "zhd556308",    -- 用户名
+        password = "OZ469006", -- 密码
+        mount = "/RTCM33_GRC", -- 挂载点
+        https = false,         -- 是否使用https,一般不需要
+        cb = gnss_write        -- 回调函数, 用于发送数据给gnss模块
     })
     ntrip.start()
+
+    -- 以下是连接到GNSS/GPS模块的代码
     uart.setup(gnss_uart_id, 115200)
     uart.on(gnss_uart_id, "receive", function(id, len)
         local s = ""
         repeat
             s = uart.read(id, 1024)
             if #s > 0 then
+                ntrip.gga(s)
+                -- 以下的是调试代码, 用于打印GNSS模块的原始数据,非必须
                 local rmc = s:find("$GNRMC,")
                 if rmc and s:find("\r\n", rmc) then
                     log.info("uart", s:sub(rmc, s:find("\r\n", rmc) - 1))
@@ -46,8 +51,8 @@ local ntrip = {}
                 local gga = s:find("$GNGGA,")
                 if gga and s:find("\r\n", gga) then
                     log.info("uart", s:sub(gga, s:find("\r\n", gga) - 1))
-                    ntrip.gga(s)
                 end
+                -- 传递给GNSS库解析,非必须
                 if libgnss then
                     libgnss.parse(s)
                 end
@@ -82,13 +87,13 @@ function ntrip.task()
                 local succ, data_len = socket.rx(sc, rxbuff)
                 
                 if not succ then
-                    ntrip.keep = nil
+                    ntrip.ready = nil
                     break
                 end
                 if data_len and data_len > 0 then
                     if rxbuff:query(0, 5) == "ERROR" and not rxbuff:query():find("ICY 200 OK") then
                         log.error("ntrip", "服务器返回错误", rxbuff:query())
-                        ntrip.keep = nil
+                        ntrip.ready = nil
                         return
                     end
                     -- log.info("ntrip", "接收数据", data_len, rxbuff:query())
@@ -104,18 +109,18 @@ function ntrip.task()
         end
         -- 连接成功
         if event == socket.ON_LINE then
-            log.info("ntrip", "连接成功")
+            -- log.info("ntrip", "连接成功")
             -- 写入ntrip协议头
             local data = string.format("GET %s HTTP/1.0\r\nUser-Agent: NTRIP NtripClientPOSIX/1.50\r\nAccept: */*\r\n", ntrip.mount)
             data = data .. string.format("Host: %s:%d\r\n", ntrip.host, ntrip.port)
             data = data .. string.format("Connection: close\r\n")
             local auth = string.format("Authorization: Basic %s\r\n\r\n", (ntrip.user .. ":" .. ntrip.password):toBase64())
-            log.info("ntrip", "发送请求头", data .. auth)
+            -- log.info("ntrip", "发送请求头", data .. auth)
             if not socket.tx(sc, data .. auth) then
                 log.error("ntrip", "发送auth失败")
                 return
             end
-            ntrip.keep = true
+            ntrip.ready = true
         end
     end)
     socket.config(netc, nil, nil, ntrip.https)
@@ -125,7 +130,7 @@ function ntrip.task()
         log.info("ntrip", "开始连接服务器", ntrip.host, ntrip.port)
         if socket.connect(netc, ntrip.host, ntrip.port) then
             sys.wait(5000)
-            while ntrip.keep do
+            while ntrip.ready do
                 sys.wait(3000)
             end
         end
@@ -156,14 +161,16 @@ end
 @return nil 无返回值
 ]]
 function ntrip.gga(str, send_all)
-    if ntrip.netc and ntrip.keep then
+    if ntrip.netc and ntrip.ready then
         -- TODO 仅发送gga数据
         if send_all then
             socket.tx(ntrip.netc, str)
         else
             local gga = str:find("$GNGGA,")
             if gga and str:find("\r\n", gga) then
-                socket.tx(ntrip.netc, str:sub(gga, str:find("\r\n", gga) + 1))
+                local tmp = str:sub(gga, str:find("\r\n", gga) + 1)
+                -- log.info("gga", tmp:toHex())
+                socket.tx(ntrip.netc, tmp)
             end
         end
     end

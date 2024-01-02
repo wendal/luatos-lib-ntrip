@@ -16,6 +16,10 @@ ntrip协议客户端 for LuatOS
 2. 参考demo中的代码, 初始化ntrip客户端, 传入ntrip账户信息
 3. 调用ntrip.start()启动客户端
 
+## 变更日志
+
+[changelog](changelog.md)
+
 ## LIcense
 
 [MIT License](https://opensource.org/licenses/MIT)
