@@ -84,6 +84,7 @@ function ntrip.task()
         if event == socket.EVENT then
             -- log.info("ntrip", "收到数据EVENT")
             while 1 do
+                rxbuff:del()
                 local succ, data_len = socket.rx(sc, rxbuff)
                 
                 if not succ then
@@ -100,7 +101,7 @@ function ntrip.task()
                     log.info("ntrip", "接收", succ, data_len)
                     if ntrip.cb then
                         ntrip.cb(rxbuff)
-                        rxbuff:del()
+                        
                     end
                 else
                     break
