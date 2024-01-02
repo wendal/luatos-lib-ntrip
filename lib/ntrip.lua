@@ -1,6 +1,4 @@
 
-local ntrip = {}
-
 --[[
 @module ntrip
 @summary RTK客户端
@@ -13,6 +11,8 @@ local ntrip = {}
 -- 具体用法请查阅demo
 ]]
 
+local ntrip = {}
+
 --[[
 配置ntrip客户端
 @api ntrip.setup(opts)
@@ -20,18 +20,43 @@ local ntrip = {}
 @return boolean 配置成功返回true, 否则返回nil
 @usage
 -- 实例配置, 但如下账户信息肯定是过期的, 无法连接
-function gnss_write(buff)
-    uart.write(gnss_uart_id, buff)
-end
-ntrip.setup({
-    host = "106.55.71.75",
-    port = 8002,
-    user = "zhd556308",
-    password = "OZ469006",
-    mount = "/RTCM33_GRC",
-    https = false,
-    cb = gnss_write
-})
+    function gnss_write(buff)
+        uart.write(gnss_uart_id, buff)
+    end
+    ntrip.setup({
+        host = "106.55.71.75",
+        port = 8002,
+        user = "zhd556308",
+        password = "OZ469006",
+        mount = "/RTCM33_GRC",
+        https = false,
+        cb = gnss_write
+    })
+    ntrip.start()
+    uart.setup(gnss_uart_id, 115200)
+    uart.on(gnss_uart_id, "receive", function(id, len)
+        local s = ""
+        repeat
+            s = uart.read(id, 1024)
+            if #s > 0 then
+                local rmc = s:find("$GNRMC,")
+                if rmc and s:find("\r\n", rmc) then
+                    log.info("uart", s:sub(rmc, s:find("\r\n", rmc) - 1))
+                end
+                local gga = s:find("$GNGGA,")
+                if gga and s:find("\r\n", gga) then
+                    log.info("uart", s:sub(gga, s:find("\r\n", gga) - 1))
+                    ntrip.gga(s)
+                end
+                if libgnss then
+                    libgnss.parse(s)
+                end
+            end
+            if #s == len then
+                break
+            end
+        until s == ""
+    end)
 ]]
 function ntrip.setup(user_opts) 
     ntrip.host = user_opts["host"]
