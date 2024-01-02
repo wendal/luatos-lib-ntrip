@@ -39,22 +39,28 @@ function ntrip.task()
     -- 准备好所需要的接收缓冲区
     local rxbuff = zbuff.create(1024)
     local netc = socket.create(opts.adapter, function(sc, event)
-        log.info("ntrip", "socket event", sc, event)
+        -- log.info("ntrip", "socket event", sc, event)
         -- 收到数据, 或者连接断开
         if event == socket.EVENT then
-            log.info("ntrip", "收到数据EVENT")
+            -- log.info("ntrip", "收到数据EVENT")
             while 1 do
                 local succ, data_len = socket.rx(sc, rxbuff)
-                log.info("ntrip", "接收", succ, data_len)
+                
                 if not succ then
                     ntrip.keep = nil
                     break
                 end
                 if data_len and data_len > 0 then
-                    log.info("ntrip", "接收数据", data_len, rxbuff:query())
-                    if ntrip.cb then
-                        ntrip.cb(rxbuff)
-                        rxbuff.del()
+                    if rxbuff:query(0, 5) == "ERROR" and not rxbuff:query():find("ICY 200 OK") then
+                        log.error("ntrip", "服务器返回错误", rxbuff:query())
+                        ntrip.keep = nil
+                        return
+                    end
+                    -- log.info("ntrip", "接收数据", data_len, rxbuff:query())
+                    log.info("ntrip", "接收", succ, data_len)
+                    if opts.cb then
+                        opts.cb(rxbuff)
+                        rxbuff:del()
                     end
                 else
                     break
@@ -83,7 +89,7 @@ function ntrip.task()
         -- 连接服务器, 15秒超时
         log.info("ntrip", "开始连接服务器", opts.host, opts.port)
         if socket.connect(netc, opts.host, opts.port) then
-            sys.wait(3000)
+            sys.wait(5000)
             while ntrip.keep do
                 sys.wait(3000)
             end
@@ -104,7 +110,7 @@ function ntrip.start()
 end
 
 function ntrip.gga(str)
-    if ntrip.netc then
+    if ntrip.netc and ntrip.keep then
         -- TODO 仅发送gga数据
         socket.tx(ntrip.netc, str)
     end
