@@ -97,8 +97,13 @@ function ntrip.task()
                         ntrip.ready = nil
                         return
                     end
-                    -- log.info("ntrip", "接收数据", data_len, rxbuff:query())
-                    log.info("ntrip", "接收", succ, data_len)
+                    if rxbuff:query(0, 10) == "HTTP/1.1 4" then
+                        log.error("ntrip", "服务器返回错误", rxbuff:query())
+                        ntrip.ready = nil
+                        return
+                    end
+                    log.info("ntrip", "接收数据", data_len, rxbuff:query())
+                    -- log.info("ntrip", "接收", succ, data_len)
                     if ntrip.cb then
                         ntrip.cb(rxbuff)
                     end
