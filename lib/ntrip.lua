@@ -1,44 +1,54 @@
 
 local ntrip = {}
 
--- 编写ntrip客户端
+--[[
+@module ntrip
+@summary RTK客户端
+@version 1.0.1
+@date    2024.01.02
+@author  wendal
+@tag LUAT_USE_TAG
+@demo ntrip
+@usage
+-- 具体用法请查阅demo
+]]
 
-local opts = {}
-
+--[[
+配置ntrip客户端
+@api ntrip.setup(opts)
+@table 配置项
+@return boolean 配置成功返回true, 否则返回nil
+@usage
+-- 实例配置, 但如下账户信息肯定是过期的, 无法连接
+function gnss_write(buff)
+    uart.write(gnss_uart_id, buff)
+end
+ntrip.setup({
+    host = "106.55.71.75",
+    port = 8002,
+    user = "zhd556308",
+    password = "OZ469006",
+    mount = "/RTCM33_GRC",
+    https = false,
+    cb = gnss_write
+})
+]]
 function ntrip.setup(user_opts) 
-    -- if user_opts["host"] == nil then
-    --     log.error("ntrip", "必须设置host")
-    --     return
-    -- end
-    -- if user_opts["port"] == nil then
-    --     log.error("ntrip", "必须设置port")
-    --     return
-    -- end
-    -- if user_opts["user"] == nil then
-    --     log.error("ntrip", "必须设置用户名user")
-    --     return
-    -- end
-    -- if user_opts["password"] == nil then
-    --     log.error("ntrip", "必须设置密码password")
-    --     return
-    -- end
-    -- if user_opts["mount"] == nil then
-    --     log.error("ntrip", "必须设置挂载点mount")
-    --     return
-    -- end
-    -- if user_opts["cb"] == nil then
-    --     log.error("ntrip", "必须设置数据回调cb")
-    --     return
-    -- end
-    opts = user_opts
+    ntrip.host = user_opts["host"]
+    ntrip.port = user_opts["port"]
+    ntrip.user = user_opts["user"]
+    ntrip.password = user_opts["password"]
+    ntrip.mount = user_opts["mount"]
+    ntrip.cb = user_opts["cb"]
+    ntrip.adapter = user_opts["adapter"]
+    ntrip.https = user_opts["https"]
     return true
 end
 
 function ntrip.task()
-
     -- 准备好所需要的接收缓冲区
     local rxbuff = zbuff.create(1024)
-    local netc = socket.create(opts.adapter, function(sc, event)
+    local netc = socket.create(ntrip.adapter, function(sc, event)
         -- log.info("ntrip", "socket event", sc, event)
         -- 收到数据, 或者连接断开
         if event == socket.EVENT then
@@ -58,8 +68,8 @@ function ntrip.task()
                     end
                     -- log.info("ntrip", "接收数据", data_len, rxbuff:query())
                     log.info("ntrip", "接收", succ, data_len)
-                    if opts.cb then
-                        opts.cb(rxbuff)
+                    if ntrip.cb then
+                        ntrip.cb(rxbuff)
                         rxbuff:del()
                     end
                 else
@@ -71,10 +81,10 @@ function ntrip.task()
         if event == socket.ON_LINE then
             log.info("ntrip", "连接成功")
             -- 写入ntrip协议头
-            local data = string.format("GET %s HTTP/1.0\r\nUser-Agent: NTRIP NtripClientPOSIX/1.50\r\nAccept: */*\r\n", opts.mount)
-            data = data .. string.format("Host: %s:%d\r\n", opts.host, opts.port)
+            local data = string.format("GET %s HTTP/1.0\r\nUser-Agent: NTRIP NtripClientPOSIX/1.50\r\nAccept: */*\r\n", ntrip.mount)
+            data = data .. string.format("Host: %s:%d\r\n", ntrip.host, ntrip.port)
             data = data .. string.format("Connection: close\r\n")
-            local auth = string.format("Authorization: Basic %s\r\n\r\n", (opts.user .. ":" .. opts.password):toBase64())
+            local auth = string.format("Authorization: Basic %s\r\n\r\n", (ntrip.user .. ":" .. ntrip.password):toBase64())
             log.info("ntrip", "发送请求头", data .. auth)
             if not socket.tx(sc, data .. auth) then
                 log.error("ntrip", "发送auth失败")
@@ -83,12 +93,12 @@ function ntrip.task()
             ntrip.keep = true
         end
     end)
-    socket.config(netc, nil)
+    socket.config(netc, nil, nil, ntrip.https)
     ntrip.netc = netc
     while true do
         -- 连接服务器, 15秒超时
-        log.info("ntrip", "开始连接服务器", opts.host, opts.port)
-        if socket.connect(netc, opts.host, opts.port) then
+        log.info("ntrip", "开始连接服务器", ntrip.host, ntrip.port)
+        if socket.connect(netc, ntrip.host, ntrip.port) then
             sys.wait(5000)
             while ntrip.keep do
                 sys.wait(3000)
@@ -102,17 +112,35 @@ function ntrip.task()
     end
 end
 
-
+--[[
+启动Ntrip客户端
+@api ntrip.start()
+@return nil 总会成功
+]]
 function ntrip.start()
     if ntrip.task_id == nil then
         ntrip.task_id = sys.taskInit(ntrip.task)
     end
 end
 
-function ntrip.gga(str)
+--[[
+写入GGA数据
+@api ntrip.gga(str, send_all)
+@string GGA数据
+@bool 是否发送全部数据,默认false,节省流量
+@return nil 无返回值
+]]
+function ntrip.gga(str, send_all)
     if ntrip.netc and ntrip.keep then
         -- TODO 仅发送gga数据
-        socket.tx(ntrip.netc, str)
+        if send_all then
+            socket.tx(ntrip.netc, str)
+        else
+            local gga = str:find("$GNGGA,")
+            if gga and str:find("\r\n", gga) then
+                socket.tx(ntrip.netc, str:sub(gga, str:find("\r\n", gga) + 1))
+            end
+        end
     end
 end
 

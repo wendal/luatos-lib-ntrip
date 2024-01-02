@@ -11,6 +11,7 @@ end
 
 sys.taskInit(function()
     sys.waitUntil("net_ready")
+    -- 国内的测试账户
     ntrip.setup({
         host = "106.55.71.75",
         port = 8002,
