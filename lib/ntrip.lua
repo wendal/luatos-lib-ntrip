@@ -86,24 +86,30 @@ function ntrip.task()
             while 1 do
                 rxbuff:del()
                 local succ, data_len = socket.rx(sc, rxbuff)
-                
+
                 if not succ then
                     ntrip.ready = nil
                     break
                 end
                 if data_len and data_len > 0 then
-                    if rxbuff:query(0, 5) == "ERROR" and not rxbuff:query():find("ICY 200 OK") then
-                        log.error("ntrip", "服务器返回错误", rxbuff:query())
-                        ntrip.ready = nil
-                        return
-                    end
-                    if rxbuff:query(0, 10) == "HTTP/1.1 4" then
-                        log.error("ntrip", "服务器返回错误", rxbuff:query())
-                        ntrip.ready = nil
-                        return
+                    if not ntrip.icy200 then
+                        if rxbuff:used() >= 10 then
+                            if rxbuff:query():find("ICY 200 OK") then
+                                ntrip.icy200 = true
+                                log.info("ntrip", "登陆成功")
+                                return
+                            else
+                                log.error("ntrip", "登陆失败", rxbuff:query())
+                                ntrip.ready = nil
+                                break
+                            end
+                        else
+                            log.info("ntrip", "继续等待ICY 200 OK", rxbuff:query())
+                            return
+                        end
                     end
                     -- log.info("ntrip", "接收数据长度", data_len)
-                    log.info("ntrip", "接收", succ, data_len)
+                    log.info("ntrip", "接收差分数据长度", data_len)
                     if ntrip.cb then
                         ntrip.cb(rxbuff)
                     end
@@ -138,6 +144,7 @@ function ntrip.task()
         -- 连接服务器, 15秒超时
         log.info("ntrip", "开始连接服务器", ntrip.host, ntrip.port)
         if socket.connect(netc, ntrip.host, ntrip.port) then
+            ntrip.icy200 = nil
             sys.wait(5000)
             while ntrip.ready do
                 sys.wait(3000)
