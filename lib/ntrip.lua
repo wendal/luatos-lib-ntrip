@@ -102,8 +102,8 @@ function ntrip.task()
                         ntrip.ready = nil
                         return
                     end
-                    log.info("ntrip", "接收数据", data_len, rxbuff:query())
-                    -- log.info("ntrip", "接收", succ, data_len)
+                    -- log.info("ntrip", "接收数据长度", data_len)
+                    log.info("ntrip", "接收", succ, data_len)
                     if ntrip.cb then
                         ntrip.cb(rxbuff)
                     end

@@ -15,8 +15,8 @@ sys.taskInit(function()
     ntrip.setup({
         host = "106.55.71.75",
         port = 8002,
-        user = "zhd556308",
-        password = "OZ469006",
+        user = "zhd395204",
+        password = "yY389642",
         -- mount = "/RTCM33_GRC",
         mount = "/RTCM33_GRCE_411",
         cb = gnss_write
