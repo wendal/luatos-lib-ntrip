@@ -5,7 +5,7 @@
 @version 1.0.2
 @date    2024.01.02
 @author  wendal
-@tag LUAT_USE_TAG
+@tag LUAT_USE_NETWORK
 @demo ntrip
 @usage
 -- 具体用法请查阅demo
