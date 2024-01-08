@@ -49,6 +49,11 @@ ntrip协议客户端 for LuatOS, 兼容千寻SDK/中移Cors/腾讯Cors/全国Cor
 2. demo 示例代码目录, 包含demo.lua等示例文件, 搭配lib目录组成完整luatos演示代码
 3. fireware 固件目录, 包含验证过的固件文件, 方便测试, 但并非只能使用该固件
 
+## 获取免费的ntrip账户
+
+1. 微信小程序搜 `cors账户` , 部分商城支持1分钱购买/看广告获取 `30分钟` 的中移Cors账户
+2. 广东地区(公众号gdcors)支持专网访问省内的Cors服务器, 专网卡10元/月
+
 ## 变更日志
 
 [changelog](changelog.md)
