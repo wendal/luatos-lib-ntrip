@@ -26,7 +26,7 @@ ntrip协议客户端 for LuatOS, 兼容千寻SDK/中移Cors/腾讯Cors/全国Cor
 
 ## 支持的平台
 
-1. [千寻SDK](https://help.qxwz.com/400022), 千寻RTK, 千寻知寸, 千寻CORS
+1. 千寻CORS, 直接给账户密码的方式
 2. [中移Cors](https://pnt.10086.cn/v1/mallportal/#/home)
 3. [腾讯Cors](https://lbs.qq.com/rtk/), 腾讯网络RTK
 4. 全国Cors
