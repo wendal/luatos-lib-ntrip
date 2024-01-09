@@ -1,6 +1,6 @@
 # luatos-lib-ntrip
 
-ntrip协议客户端 for LuatOS, 兼容千寻SDK/中移Cors/腾讯Cors/全国Cors等一众ntrip协议服务器
+ntrip协议客户端 for LuatOS, 兼容千寻Cors/中移Cors/腾讯Cors/全国Cors等一众ntrip协议服务器
 
 ## 介绍
 
